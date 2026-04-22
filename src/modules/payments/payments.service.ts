@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { PaymentStatus } from '@prisma/client';
+import { AuditAction, PaymentStatus } from '@prisma/client';
+import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { OrdersService } from '../orders/orders.service';
 import { ConfirmPaymentDto } from './dto/confirm-payment.dto';
@@ -10,6 +11,7 @@ export class PaymentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly ordersService: OrdersService,
+    private readonly auditLogsService: AuditLogsService,
   ) {}
 
   async create(userId: string, dto: CreatePaymentDto) {
@@ -18,6 +20,15 @@ export class PaymentsService {
       userId,
       dto.provider,
     );
+
+    await this.auditLogsService.create({
+      actorUserId: userId,
+      action: AuditAction.CREATE,
+      entityType: 'payment',
+      entityId: payment.id,
+      description: `Created payment for order ${dto.orderId}`,
+      metadata: { provider: dto.provider },
+    });
 
     return {
       ...payment,
@@ -44,6 +55,14 @@ export class PaymentsService {
     });
 
     await this.ordersService.markAsPaid(payment.orderId);
+    await this.auditLogsService.create({
+      actorUserId: payment.userId,
+      action: AuditAction.STATUS_CHANGE,
+      entityType: 'payment',
+      entityId: payment.id,
+      description: `Confirmed payment ${payment.id}`,
+      metadata: { providerRef: dto.providerRef },
+    });
 
     return {
       ...updated,
@@ -63,4 +82,3 @@ export class PaymentsService {
     }));
   }
 }
-

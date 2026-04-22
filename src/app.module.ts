@@ -12,6 +12,8 @@ import { ProductsModule } from './modules/products/products.module';
 import { CartsModule } from './modules/carts/carts.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { PaymentsModule } from './modules/payments/payments.module';
+import { AuditLogsModule } from './modules/audit-logs/audit-logs.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { envSchema } from './modules/config/env.schema';
 
 @Module({
@@ -37,6 +39,8 @@ import { envSchema } from './modules/config/env.schema';
     CartsModule,
     OrdersModule,
     PaymentsModule,
+    AuditLogsModule,
+    DashboardModule,
   ],
   providers: [
     {
@@ -46,4 +50,3 @@ import { envSchema } from './modules/config/env.schema';
   ],
 })
 export class AppModule {}
-

@@ -3,14 +3,19 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { CartStatus, OrderStatus, PaymentStatus, Prisma } from '@prisma/client';
+import { AuditAction, CartStatus, OrderStatus, PaymentStatus, Prisma } from '@prisma/client';
+import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { QueryOrdersDto } from './dto/query-orders.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 
 @Injectable()
 export class OrdersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditLogsService: AuditLogsService,
+  ) {}
 
   async createFromActiveCart(userId: string, dto: CreateOrderDto) {
     const cart = await this.prisma.cart.findFirst({
@@ -89,28 +94,38 @@ export class OrdersService {
     };
   }
 
-  async findMyOrders(userId: string) {
+  async findMyOrders(userId: string, query?: QueryOrdersDto) {
+    const { page = 1, limit = 20, search, status } = query ?? {};
+    const where: Prisma.OrderWhereInput = { userId };
+    if (status) where.status = status;
+    if (search) {
+      where.OR = [
+        { id: { contains: search, mode: 'insensitive' } },
+        { orderNumber: { contains: search, mode: 'insensitive' } },
+      ];
+    }
     const orders = await this.prisma.order.findMany({
-      where: { userId },
+      where,
       include: {
         items: true,
         payments: true,
       },
+      skip: (page - 1) * limit,
+      take: limit,
       orderBy: { createdAt: 'desc' },
     });
 
-    return orders.map((order) => ({
-      ...order,
-      subtotalAmount: Number(order.subtotalAmount),
-      discountAmount: Number(order.discountAmount),
-      shippingAmount: Number(order.shippingAmount),
-      totalAmount: Number(order.totalAmount),
-      items: order.items.map((item) => ({
-        ...item,
-        unitPrice: Number(item.unitPrice),
-        subtotal: Number(item.subtotal),
-      })),
-    }));
+    const total = await this.prisma.order.count({ where });
+
+    return {
+      data: orders.map((order) => this.mapOrder(order)),
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   }
 
   async findMyOrder(userId: string, orderId: string) {
@@ -126,25 +141,54 @@ export class OrdersService {
       throw new NotFoundException('Order not found');
     }
 
+    return this.mapOrder(order);
+  }
+
+  async adminList(query?: QueryOrdersDto) {
+    const { page = 1, limit = 20, search, status } = query ?? {};
+    const where: Prisma.OrderWhereInput = {};
+    if (status) where.status = status;
+    if (search) {
+      where.OR = [
+        { id: { contains: search, mode: 'insensitive' } },
+        { orderNumber: { contains: search, mode: 'insensitive' } },
+        { user: { email: { contains: search, mode: 'insensitive' } } },
+      ];
+    }
+    const orders = await this.prisma.order.findMany({
+      where,
+      include: {
+        items: true,
+        payments: true,
+        user: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            role: true,
+          },
+        },
+      },
+      skip: (page - 1) * limit,
+      take: limit,
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const total = await this.prisma.order.count({ where });
+
     return {
-      ...order,
-      subtotalAmount: Number(order.subtotalAmount),
-      discountAmount: Number(order.discountAmount),
-      shippingAmount: Number(order.shippingAmount),
-      totalAmount: Number(order.totalAmount),
-      items: order.items.map((item) => ({
-        ...item,
-        unitPrice: Number(item.unitPrice),
-        subtotal: Number(item.subtotal),
-      })),
+      data: orders.map((order) => this.mapOrder(order)),
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
     };
   }
 
-  async adminList() {
-    return this.findMyOrders as never;
-  }
-
-  async updateStatus(orderId: string, dto: UpdateOrderStatusDto) {
+  async updateStatus(orderId: string, dto: UpdateOrderStatusDto, actorUserId?: string) {
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
     });
@@ -153,10 +197,18 @@ export class OrdersService {
       throw new NotFoundException('Order not found');
     }
 
-    return this.prisma.order.update({
+    const updated = await this.prisma.order.update({
       where: { id: orderId },
       data: { status: dto.status },
     });
+    await this.auditLogsService.create({
+      actorUserId,
+      action: AuditAction.STATUS_CHANGE,
+      entityType: 'order',
+      entityId: orderId,
+      description: `Changed order ${order.orderNumber} status to ${dto.status}`,
+    });
+    return updated;
   }
 
   async markAsPaid(orderId: string) {
@@ -186,5 +238,23 @@ export class OrdersService {
       },
     });
   }
-}
 
+  private mapOrder(order: any) {
+    return {
+      ...order,
+      subtotalAmount: Number(order.subtotalAmount),
+      discountAmount: Number(order.discountAmount),
+      shippingAmount: Number(order.shippingAmount),
+      totalAmount: Number(order.totalAmount),
+      items: order.items?.map((item: any) => ({
+        ...item,
+        unitPrice: Number(item.unitPrice),
+        subtotal: Number(item.subtotal),
+      })),
+      payments: order.payments?.map((payment: any) => ({
+        ...payment,
+        amount: Number(payment.amount),
+      })),
+    };
+  }
+}

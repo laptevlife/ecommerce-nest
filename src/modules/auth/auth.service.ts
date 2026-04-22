@@ -3,9 +3,10 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { UserRole } from '@prisma/client';
+import { AuditAction, UserRole } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
+import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -18,6 +19,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly appConfig: AppConfigService,
+    private readonly auditLogsService: AuditLogsService,
   ) {}
 
   async register(dto: RegisterDto): Promise<AuthResponseDto> {
@@ -41,6 +43,14 @@ export class AuthService {
       },
     });
 
+    await this.auditLogsService.create({
+      actorUserId: user.id,
+      action: AuditAction.CREATE,
+      entityType: 'user',
+      entityId: user.id,
+      description: `Registered user ${user.email}`,
+    });
+
     return this.buildAuthResponse(user.id);
   }
 
@@ -58,7 +68,15 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    return this.buildAuthResponse(user.id);
+    const response = await this.buildAuthResponse(user.id);
+    await this.auditLogsService.create({
+      actorUserId: user.id,
+      action: AuditAction.LOGIN,
+      entityType: 'auth',
+      entityId: user.id,
+      description: `User ${user.email} logged in`,
+    });
+    return response;
   }
 
   async refresh(userId: string): Promise<AuthResponseDto> {
@@ -66,9 +84,16 @@ export class AuthService {
   }
 
   async logout(userId: string): Promise<void> {
-    await this.prisma.user.update({
+    const user = await this.prisma.user.update({
       where: { id: userId },
       data: { refreshTokenHash: null },
+    });
+    await this.auditLogsService.create({
+      actorUserId: userId,
+      action: AuditAction.LOGOUT,
+      entityType: 'auth',
+      entityId: userId,
+      description: `User ${user.email} logged out`,
     });
   }
 

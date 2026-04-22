@@ -13,10 +13,19 @@ export class QueryProductsDto {
   @IsString()
   categoryId?: string;
 
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  brand?: string;
+
   @ApiPropertyOptional({ enum: ProductStatus })
   @IsOptional()
   @IsEnum(ProductStatus)
   status?: ProductStatus;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  isPublished?: boolean;
 
   @ApiPropertyOptional({ default: 1 })
   @IsOptional()
@@ -30,4 +39,3 @@ export class QueryProductsDto {
   @Min(1)
   limit?: number = 20;
 }
-

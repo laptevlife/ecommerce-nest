@@ -8,8 +8,9 @@
 - `Swagger` на `/docs`;
 - `Auth` с access/refresh JWT;
 - `RBAC` через роли `ADMIN` и `CUSTOMER`;
-- `Prisma` schema для `users`, `categories`, `products`, `carts`, `orders`, `payments`;
+- `Prisma` schema для `users`, `categories`, `products`, `product_media`, `product_variants`, `carts`, `orders`, `payments`, `audit_logs`;
 - базовые модули: `auth`, `users`, `categories`, `products`, `carts`, `orders`, `payments`, `health`;
+- admin-модули: `dashboard`, `audit-logs`;
 - `docker-compose` для локального `PostgreSQL`;
 - env-валидация через `zod`.
 
@@ -33,6 +34,8 @@ src/
     prisma/
     products/
     users/
+    dashboard/
+    audit-logs/
 prisma/
   schema.prisma
 ```
@@ -44,6 +47,8 @@ prisma/
 - контроллеры остаются тонкими;
 - данные о цене заказа считаются на backend, а не доверяются клиенту;
 - базовые security-практики включены сразу: validation, role guards, hashed passwords, hashed refresh tokens.
+- admin-операции фиксируются в `audit_logs`;
+- каталог уже подготовлен под магазин инструментов: `brand`, `media gallery`, `variants`.
 
 ## Запуск
 
@@ -71,7 +76,19 @@ npx prisma generate
 npx prisma migrate dev --name init
 ```
 
-5. Запустить backend:
+5. Создать первого admin:
+
+```bash
+npm run seed:admin
+```
+
+6. При желании наполнить базу демо-данными магазина инструментов:
+
+```bash
+npm run seed:demo
+```
+
+7. Запустить backend:
 
 ```bash
 npm run start:dev
@@ -89,22 +106,87 @@ Health endpoint:
 http://localhost:3001/api/v1/health
 ```
 
+## Первый ADMIN
+
+По умолчанию seed использует значения из `.env`:
+
+```text
+ADMIN_EMAIL=admin@codex-shop.local
+ADMIN_PASSWORD=ChangeMe123!
+```
+
+Их лучше поменять до первого запуска на свои реальные.
+
+Команда:
+
+```bash
+npm run seed:admin
+```
+
+Если пользователь уже существует, seed обновит его до роли `ADMIN`.
+
+`seed:demo` дополнительно создает:
+
+- категории под магазин инструментов;
+- стартовые товары;
+- product media;
+- product variants;
+- запись в audit log.
+
+## Базовые admin CRUD-сценарии
+
+Уже доступны backend-эндпоинты для админки:
+
+- `GET /api/v1/users/admin/all`
+- `GET /api/v1/users/admin/:id`
+- `PATCH /api/v1/users/admin/:id`
+- `GET /api/v1/orders/admin/all`
+- `PATCH /api/v1/orders/:id/status`
+- `GET /api/v1/dashboard/stats`
+- `GET /api/v1/audit-logs`
+- `POST /api/v1/categories`
+- `GET /api/v1/categories`
+- `PATCH /api/v1/categories/:id`
+- `DELETE /api/v1/categories/:id`
+- `GET /api/v1/products`
+- `POST /api/v1/products`
+- `PATCH /api/v1/products/:id`
+- `DELETE /api/v1/products/:id`
+- `POST /api/v1/products/:id/media`
+- `POST /api/v1/products/:id/variants`
+- `PATCH /api/v1/products/:id/variants/:variantId`
+
+## Что уже умеет backend
+
+- регистрация, логин, refresh token, logout;
+- customer profile API;
+- admin users list с фильтрами и пагинацией;
+- categories CRUD с пагинацией;
+- products CRUD с фильтрами и пагинацией;
+- product media gallery;
+- product variants;
+- active cart;
+- создание заказа из корзины;
+- user orders list с фильтрами и пагинацией;
+- admin orders list с фильтрами и пагинацией;
+- payment records и подтверждение оплаты;
+- dashboard stats для админки;
+- audit log для ключевых admin-операций.
+
 ## Рекомендуемый порядок дальнейшей реализации
 
-1. Добавить seed для первого admin-пользователя.
-2. Расширить `products` до variants / attributes / media gallery.
-3. Добавить delivery, pricing, promo codes, notifications.
-4. Вынести payment provider adapters в отдельный слой.
-5. Добавить audit log, integration jobs и worker.
+1. Добавить delivery, pricing, promo codes, notifications.
+2. Вынести payment provider adapters в отдельный слой.
+3. Добавить file storage и upload pipeline для product media.
+4. Добавить audit log viewer в админский frontend.
+5. Добавить integration jobs и worker для ERP/1С.
 
 ## Важная оговорка
 
 Это именно **foundation**, а не полностью законченный production e-commerce. Каркас уже пригоден как база, но перед боевым запуском нужно будет добавить:
 
-- миграции и seed-данные;
 - тесты;
 - обработку webhooks платежных провайдеров;
 - delivery / pricing / promo rules;
-- audit trail;
 - файл-хранилище;
 - интеграции.
