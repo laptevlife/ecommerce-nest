@@ -4,7 +4,7 @@ export const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().default(3001),
   API_PREFIX: z.string().default('api/v1'),
-  APP_NAME: z.string().default('Codex Shop API'),
+  APP_NAME: z.string().default('E-commerce API'),
   APP_DESCRIPTION: z.string().default('Scalable NestJS backend foundation for ecommerce'),
   ALLOWED_ORIGINS: z.string().default('http://localhost:3000'),
   DATABASE_URL: z.string().min(1),
@@ -16,4 +16,3 @@ export const envSchema = z.object({
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;
-

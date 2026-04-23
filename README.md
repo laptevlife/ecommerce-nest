@@ -1,4 +1,4 @@
-# Codex Shop Backend
+# E-commerce Backend
 
 Масштабируемый backend foundation для интернет-магазина на `NestJS + Prisma + PostgreSQL`.
 
@@ -111,7 +111,7 @@ http://localhost:3001/api/v1/health
 По умолчанию seed использует значения из `.env`:
 
 ```text
-ADMIN_EMAIL=admin@codex-shop.local
+ADMIN_EMAIL=admin@ecommerce.local
 ADMIN_PASSWORD=ChangeMe123!
 ```
 

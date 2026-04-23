@@ -1,5 +1,5 @@
 {
-  "name": "codex-shop",
+  "name": "ecommerce-backend",
   "version": "1.0.0",
   "description": "Scalable NestJS backend foundation for ecommerce",
   "scripts": {

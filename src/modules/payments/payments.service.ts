@@ -81,4 +81,32 @@ export class PaymentsService {
       amount: Number(payment.amount),
     }));
   }
+
+  async findAllAdmin() {
+    const payments = await this.prisma.payment.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+        order: {
+          select: {
+            id: true,
+            orderNumber: true,
+            status: true,
+          },
+        },
+      },
+    });
+
+    return payments.map((payment) => ({
+      ...payment,
+      amount: Number(payment.amount),
+    }));
+  }
 }

@@ -90,4 +90,28 @@ export class ProductsController {
   ) {
     return this.productsService.updateVariant(id, variantId, dto, actorUserId);
   }
+
+  @Delete(':id/media/:mediaId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('access-token')
+  removeMedia(
+    @GetUser('id') actorUserId: string,
+    @Param('id') id: string,
+    @Param('mediaId') mediaId: string,
+  ) {
+    return this.productsService.removeMedia(id, mediaId, actorUserId);
+  }
+
+  @Delete(':id/variants/:variantId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('access-token')
+  removeVariant(
+    @GetUser('id') actorUserId: string,
+    @Param('id') id: string,
+    @Param('variantId') variantId: string,
+  ) {
+    return this.productsService.removeVariant(id, variantId, actorUserId);
+  }
 }

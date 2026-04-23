@@ -22,6 +22,14 @@ export class PaymentsController {
     return this.paymentsService.findMine(userId);
   }
 
+  @Get('admin/all')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiOkResponse()
+  findAllAdmin() {
+    return this.paymentsService.findAllAdmin();
+  }
+
   @Post()
   @ApiOkResponse()
   create(@GetUser('id') userId: string, @Body() dto: CreatePaymentDto) {
@@ -36,4 +44,3 @@ export class PaymentsController {
     return this.paymentsService.confirm(id, dto);
   }
 }
-

@@ -281,6 +281,54 @@ export class ProductsService {
     };
   }
 
+  async removeMedia(productId: string, mediaId: string, actorUserId?: string) {
+    const media = await this.prisma.productMedia.findFirst({
+      where: { id: mediaId, productId },
+    });
+
+    if (!media) {
+      throw new NotFoundException('Media not found');
+    }
+
+    await this.prisma.productMedia.delete({
+      where: { id: mediaId },
+    });
+
+    await this.auditLogsService.create({
+      actorUserId,
+      action: AuditAction.DELETE,
+      entityType: 'product_media',
+      entityId: mediaId,
+      description: `Removed media from product ${productId}`,
+    });
+
+    return { success: true };
+  }
+
+  async removeVariant(productId: string, variantId: string, actorUserId?: string) {
+    const variant = await this.prisma.productVariant.findFirst({
+      where: { id: variantId, productId },
+    });
+
+    if (!variant) {
+      throw new NotFoundException('Variant not found');
+    }
+
+    await this.prisma.productVariant.delete({
+      where: { id: variantId },
+    });
+
+    await this.auditLogsService.create({
+      actorUserId,
+      action: AuditAction.DELETE,
+      entityType: 'product_variant',
+      entityId: variantId,
+      description: `Removed variant ${variant.sku}`,
+    });
+
+    return { success: true };
+  }
+
   private mapProduct(product: any) {
     return {
       ...product,

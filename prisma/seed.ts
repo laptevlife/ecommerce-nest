@@ -12,7 +12,7 @@ async function bootstrapAdmin() {
   const databaseUrl = process.env.DATABASE_URL;
   const adminEmail = process.env.ADMIN_EMAIL;
   const adminPassword = process.env.ADMIN_PASSWORD;
-  const adminFirstName = process.env.ADMIN_FIRST_NAME ?? 'Codex';
+  const adminFirstName = process.env.ADMIN_FIRST_NAME ?? 'E-commerce';
   const adminLastName = process.env.ADMIN_LAST_NAME ?? 'Admin';
   const saltRounds = Number(process.env.BCRYPT_SALT_ROUNDS ?? 12);
 

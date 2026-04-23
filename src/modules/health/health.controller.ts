@@ -9,9 +9,8 @@ export class HealthController {
   check() {
     return {
       success: true,
-      message: 'Codex Shop API is healthy',
+      message: 'E-commerce API is healthy',
       timestamp: new Date().toISOString(),
     };
   }
 }
-
